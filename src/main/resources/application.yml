@@ -47,10 +47,14 @@ management:
 app:
   timezone: ${APP_TIMEZONE:Asia/Kolkata}
   storage:
-    # "local" stores files on disk under upload-dir. To use Cloudinary/S3, implement FileStorage and select it here.
+    # "local" stores files on disk under upload-dir; "cloudinary" uploads them to Cloudinary (needs CLOUDINARY_URL).
     provider: ${STORAGE_PROVIDER:local}
     upload-dir: ${UPLOAD_DIR:./uploads}
     max-file-size-bytes: ${UPLOAD_MAX_BYTES:5242880}
+    cloudinary:
+      # cloudinary://<api_key>:<api_secret>@<cloud_name> - a secret, keep it in backend/.env only.
+      url: ${CLOUDINARY_URL:}
+      folder: ${CLOUDINARY_FOLDER:forever-dental-care}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   jwt:

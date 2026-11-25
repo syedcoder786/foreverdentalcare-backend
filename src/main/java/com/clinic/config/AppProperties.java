@@ -22,7 +22,12 @@ public record AppProperties(
         @Valid @NotNull RateLimit rateLimit,
         @Valid @NotNull Storage storage
 ) {
-    public record Storage(@NotBlank String provider, @NotBlank String uploadDir, @Min(1024) long maxFileSizeBytes) {
+    public record Storage(@NotBlank String provider, @NotBlank String uploadDir, @Min(1024) long maxFileSizeBytes,
+                          Cloudinary cloudinary) {
+
+        /** Only used when {@code provider=cloudinary}; {@code url} is the CLOUDINARY_URL connection string. */
+        public record Cloudinary(String url, String folder) {
+        }
     }
 
     public record Cors(@NotNull List<String> allowedOrigins) {

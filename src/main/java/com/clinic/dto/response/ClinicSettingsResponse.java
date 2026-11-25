@@ -31,6 +31,7 @@ public record ClinicSettingsResponse(
         String facebookUrl,
         String instagramUrl,
         String youtubeUrl,
-        String googleReviewsUrl
+        String googleReviewsUrl,
+        String mapLinkUrl
 ) {
 }

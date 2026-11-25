@@ -29,7 +29,8 @@ public class AuditService {
         entry.setAdminEmail(currentAdminEmail());
         entry.setAction(action);
         entry.setEntityType(entityType);
-        entry.setEntityId(entityId == null ? null : String.valueOf(entityId));
+        String id = entityId == null ? null : String.valueOf(entityId);
+        entry.setEntityId(id != null && id.length() > 50 ? id.substring(0, 50) : id); // column is VARCHAR(50)
         entry.setSummary(summary == null ? null : summary.length() > 500 ? summary.substring(0, 500) : summary);
         repository.save(entry);
         log.info("AUDIT {} {} {} by {}: {}", action, entityType, entityId, entry.getAdminEmail(), entry.getSummary());

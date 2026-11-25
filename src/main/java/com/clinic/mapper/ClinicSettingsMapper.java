@@ -42,7 +42,8 @@ public class ClinicSettingsMapper {
                 s.getFacebookUrl(),
                 s.getInstagramUrl(),
                 s.getYoutubeUrl(),
-                s.getGoogleReviewsUrl());
+                s.getGoogleReviewsUrl(),
+                s.getMapLinkUrl());
     }
 
     public void apply(ClinicSettingsRequest r, ClinicSettings target) {
@@ -69,5 +70,6 @@ public class ClinicSettingsMapper {
         target.setInstagramUrl(ValidationPatterns.trimToNull(r.instagramUrl()));
         target.setYoutubeUrl(ValidationPatterns.trimToNull(r.youtubeUrl()));
         target.setGoogleReviewsUrl(ValidationPatterns.trimToNull(r.googleReviewsUrl()));
+        target.setMapLinkUrl(ValidationPatterns.trimToNull(r.mapLinkUrl()));
     }
 }

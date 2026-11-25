@@ -92,6 +92,9 @@ public class ClinicSettings {
     @Column(name = "google_reviews_url", length = 300)
     private String googleReviewsUrl;
 
+    @Column(name = "map_link_url", length = 500)
+    private String mapLinkUrl;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

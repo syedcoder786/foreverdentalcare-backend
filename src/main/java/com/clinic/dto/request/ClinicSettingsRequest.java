@@ -73,6 +73,9 @@ public record ClinicSettingsRequest(
 
         @Size(max = 300) @Pattern(regexp = ValidationPatterns.WEB_URL, message = "Use a full https:// URL") String youtubeUrl,
 
-        @Size(max = 300) @Pattern(regexp = ValidationPatterns.WEB_URL, message = "Use a full https:// URL") String googleReviewsUrl
+        @Size(max = 300) @Pattern(regexp = ValidationPatterns.WEB_URL, message = "Use a full https:// URL") String googleReviewsUrl,
+
+        /** Share link to the clinic on Google Maps (e.g. https://maps.app.goo.gl/...), used for "Get directions". */
+        @Size(max = 500) @Pattern(regexp = ValidationPatterns.WEB_URL, message = "Use a full https:// URL") String mapLinkUrl
 ) {
 }
