@@ -1,0 +1,32 @@
+# Test profile: in-memory H2 in PostgreSQL compatibility mode, running the same Flyway migrations as production.
+spring:
+  datasource:
+    url: jdbc:h2:mem:clinic_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+app:
+  timezone: Asia/Kolkata
+  cors:
+    allowed-origins: http://localhost:5173
+  jwt:
+    secret: test-only-secret-key-that-is-long-enough-for-hs256-0123456789
+    access-token-ttl-minutes: 15
+    refresh-token-ttl-days: 7
+    issuer: dental-clinic
+  cookie:
+    secure: false
+    same-site: Strict
+  admin-bootstrap:
+    name: Test Admin
+    email: admin@test.local
+    password: TestPassword123!
+  storage:
+    provider: local
+    upload-dir: target/test-uploads
+    max-file-size-bytes: 1048576
+  rate-limit:
+    booking-per-hour: 1000
+    login-per-minute: 1000
+    refresh-per-minute: 1000
