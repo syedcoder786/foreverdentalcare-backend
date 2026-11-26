@@ -7,13 +7,16 @@ import com.clinic.dto.response.AuthResponse;
 import com.clinic.entity.Admin;
 import com.clinic.entity.RefreshToken;
 import com.clinic.exception.AuthenticationFailedException;
-import com.clinic.repository.AdminRepository;
 import com.clinic.repository.RefreshTokenRepository;
+import com.clinic.security.AdminUserDetails;
 import com.clinic.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,9 @@ import java.util.HexFormat;
 /**
  * Login, refresh-token rotation and logout.
  * <p>
+ * Credentials are checked by Spring Security's {@link AuthenticationManager} (DaoAuthenticationProvider with
+ * {@code AdminUserDetailsService} and BCrypt); access tokens are issued by {@link JwtService}.
+ * <p>
  * Refresh tokens are 256-bit random values; only their SHA-256 hash is stored. Each refresh rotates the token
  * (the old one is revoked). Presenting an already-revoked token is treated as possible theft and revokes all of
  * that admin's sessions.
@@ -41,29 +47,25 @@ public class AuthService {
     private static final String INVALID_CREDENTIALS = "Invalid email or password";
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private final AdminRepository adminRepository;
+    private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AppProperties properties;
-
-    /** Pre-computed hash used to keep timing similar whether or not the email exists. */
-    private String dummyHash;
 
     public record AuthResult(AuthResponse response, String refreshToken) {
     }
 
     @Transactional
     public AuthResult login(LoginRequest request) {
-        Admin admin = adminRepository.findByEmailIgnoreCase(request.email().trim()).orElse(null);
-        if (admin == null) {
-            passwordEncoder.matches(request.password(), dummyHash());
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated(request.email().trim(), request.password()));
+        } catch (AuthenticationException ex) {
+            log.warn("Failed admin login attempt: {}", ex.getClass().getSimpleName());
             throw new AuthenticationFailedException(INVALID_CREDENTIALS);
         }
-        if (!passwordEncoder.matches(request.password(), admin.getPassword())) {
-            log.warn("Failed login attempt for admin id {}", admin.getId());
-            throw new AuthenticationFailedException(INVALID_CREDENTIALS);
-        }
+        Admin admin = ((AdminUserDetails) authentication.getPrincipal()).admin();
         return issueTokens(admin);
     }
 
@@ -123,13 +125,6 @@ public class AuthService {
 
     private void revokeAll(Admin admin) {
         refreshTokenRepository.revokeAllForAdmin(admin.getId());
-    }
-
-    private String dummyHash() {
-        if (dummyHash == null) {
-            dummyHash = passwordEncoder.encode("timing-equaliser-" + generateRawToken());
-        }
-        return dummyHash;
     }
 
     private static String generateRawToken() {
