@@ -27,6 +27,35 @@ class DatabaseConnectionTest {
     }
 
     @Test
+    void envUrlAndSavedConnectionToTheSameSupabaseDatabaseAreTheSame() {
+        // The .env URL (raw commas) and a connection entered in Admin -> Database (encoded commas, extra params).
+        String envUrl = "jdbc:postgresql://aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
+                + "?sslmode=require&currentSchema=dental_clinic,extensions,public";
+        DatabaseConnection pooler = new DatabaseConnection("aws-0-ap-northeast-1.pooler.supabase.com", 5432, "postgres",
+                "postgres.abcref", "x", "dental_clinic", "require");
+        DatabaseConnection direct = new DatabaseConnection("db.abcref.supabase.co", 5432, "postgres",
+                "postgres", "x", "dental_clinic", "prefer");
+
+        assertThat(DatabaseIdentity.same(envUrl, "postgres.abcref", pooler.jdbcUrl(), pooler.username())).isTrue();
+        // Direct host and pooler of the same project reach the same data.
+        assertThat(DatabaseIdentity.same(envUrl, "postgres.abcref", direct.jdbcUrl(), direct.username())).isTrue();
+    }
+
+    @Test
+    void differentProjectOrSchemaIsADifferentDatabase() {
+        String envUrl = "jdbc:postgresql://aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
+                + "?sslmode=require&currentSchema=dental_clinic,extensions,public";
+        DatabaseConnection otherProject = new DatabaseConnection("aws-0-ap-northeast-1.pooler.supabase.com", 5432,
+                "postgres", "postgres.otherref", "x", "dental_clinic", "require");
+        DatabaseConnection otherSchema = new DatabaseConnection("aws-0-ap-northeast-1.pooler.supabase.com", 5432,
+                "postgres", "postgres.abcref", "x", "clinic_copy", "require");
+
+        assertThat(DatabaseIdentity.same(envUrl, "postgres.abcref", otherProject.jdbcUrl(), otherProject.username())).isFalse();
+        assertThat(DatabaseIdentity.same(envUrl, "postgres.abcref", otherSchema.jdbcUrl(), otherSchema.username())).isFalse();
+        assertThat(DatabaseIdentity.same("jdbc:h2:mem:clinic_test", "sa", otherProject.jdbcUrl(), "postgres.otherref")).isFalse();
+    }
+
+    @Test
     void ipv6HostIsBracketed() {
         DatabaseConnection c = new DatabaseConnection("2406:da14::1", 5432, "postgres", "postgres", "x", null, "require");
         assertThat(c.jdbcUrl()).startsWith("jdbc:postgresql://[2406:da14::1]:5432/postgres?");

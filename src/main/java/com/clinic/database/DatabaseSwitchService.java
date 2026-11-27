@@ -329,7 +329,7 @@ public class DatabaseSwitchService {
 
     private boolean isCurrent(String jdbcUrl, String username) {
         SwitchableDataSource.Active a = dataSource.active();
-        return jdbcUrl.equals(a.jdbcUrl()) && username.equals(a.username());
+        return DatabaseIdentity.same(jdbcUrl, username, a.jdbcUrl(), a.username());
     }
 
     private Flyway flyway(DataSource ds, String schema) {
