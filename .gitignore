@@ -1,9 +1,9 @@
 # Secrets / env
 .env
 .env.*
-!.env.example
 # Database connection saved from Admin -> Database (holds the database password)
 db-connection.json
+!.env.example
 # Image storage saved from Admin -> Image storage (holds the Cloudinary API secret)
 storage-connection.json
 

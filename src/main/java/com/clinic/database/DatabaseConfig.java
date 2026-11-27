@@ -32,7 +32,7 @@ public class DatabaseConfig {
                             saved.connection().describe(), store.file());
                     return new SwitchableDataSource(adminPanelPool(saved.connection(), properties.poolSize(), false));
                 })
-                .orElseGet(() -> new SwitchableDataSource(environmentPool(envProperties, properties.poolSize())));
+                .orElseGet(() -> new SwitchableDataSource(environmentPool(envProperties, properties)));
     }
 
     /** Points Flyway at the clinic schema of a saved connection (created on first start). */
@@ -46,12 +46,13 @@ public class DatabaseConfig {
         };
     }
 
-    static SwitchableDataSource.Active environmentPool(DataSourceProperties env, int poolSize) {
+    /** The DB_* connection from backend/.env (the main Supabase database). */
+    static SwitchableDataSource.Active environmentPool(DataSourceProperties env, DatabaseProperties properties) {
         HikariDataSource pool = env.initializeDataSourceBuilder().type(HikariDataSource.class).build();
-        pool.setMaximumPoolSize(poolSize);
+        pool.setMaximumPoolSize(properties.poolSize());
         pool.setPoolName("db-env");
         return new SwitchableDataSource.Active(pool, SwitchableDataSource.Source.ENVIRONMENT, null,
-                env.determineUrl(), env.determineUsername());
+                env.determineUrl(), env.determineUsername(), properties.schema());
     }
 
     /**
@@ -68,6 +69,6 @@ public class DatabaseConfig {
         cfg.setConnectionTimeout(20_000);
         cfg.setInitializationFailTimeout(connectNow ? 1 : -1);
         return new SwitchableDataSource.Active(new HikariDataSource(cfg), SwitchableDataSource.Source.ADMIN_PANEL, c,
-                c.jdbcUrl(), c.username());
+                c.jdbcUrl(), c.username(), null);
     }
 }

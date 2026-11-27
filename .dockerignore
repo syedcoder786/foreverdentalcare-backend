@@ -1,7 +1,6 @@
 # Keep secrets and build output out of the Docker build context
 .env
 .env.*
-db-connection.json
 storage-connection.json
 uploads/
 target/
@@ -13,3 +12,4 @@ target/
 README.md
 docker-compose*.yml
 Dockerfile
+db-connection.json

@@ -6,7 +6,7 @@ A dental clinic website with online appointment requests and an admin dashboard.
 |---|---|
 | `frontend/` | React 19, TypeScript, Vite 6, Tailwind CSS 4, React Router 7, React Query 5, React Hook Form + Zod, Axios, Lucide icons |
 | `backend/` | Java 21, Spring Boot 3.5 (Web, Data JPA, Security, OAuth2 Resource Server for JWT, Validation), Flyway, Lombok, Maven |
-| Database | PostgreSQL 16 (Docker Compose). Tests run on H2 in PostgreSQL mode, using the same Flyway migrations. |
+| Database | Supabase PostgreSQL (configured with `DB_*` in `.env`). Tests run on H2 in PostgreSQL mode, using the same Flyway migrations. |
 
 > **Placeholders:** all clinic-specific content is a clearly marked placeholder. Replace it before going live (see "Replacing placeholder content" below).
 
@@ -16,9 +16,8 @@ A dental clinic website with online appointment requests and an admin dashboard.
 
 - **Java 21+** and **Maven 3.9+**
 - **Node.js 20+** and npm
-- **Docker Desktop**, for PostgreSQL. You can also use a locally installed PostgreSQL 14+.
-
-You don't need any paid external services.
+- A **Supabase** project (the free tier is enough). Its Session pooler connection goes into `.env`.
+- **Docker**, only to build and run the production container.
 
 ## 2. Local setup
 
@@ -31,23 +30,28 @@ cp .env.example .env               # used by both docker-compose and Spring Boot
 
 Edit `.env` and set at least:
 
-- `DB_PASSWORD`: any strong password.
+- `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`: from Supabase -> Connect -> **Session pooler** (IPv4). Clinic tables live in `DB_SCHEMA` (default `dental_clinic`).
 - `JWT_SECRET`: 32 or more random characters (`openssl rand -base64 48`).
 - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: the first admin account (password of at least 10 characters).
 - `COOKIE_SECURE=false`: only for local http development.
 - `CORS_ALLOWED_ORIGINS`: the frontend origin(s), e.g. `http://localhost:5173` locally or your deployed frontend URL.
 
 ```bash
-# 2. Start PostgreSQL
-docker compose up -d
-
-# 3. Start the backend (http://localhost:8080). Flyway creates tables and seed data.
+# 2. Start the backend (http://localhost:8080). Flyway creates the schema, tables and seed data on first start.
 mvn spring-boot:run
 ```
 
 Then start the frontend from its repository (`npm install && npm run dev`) and open **http://localhost:5173** for the website and **http://localhost:5173/admin** for the admin dashboard. Log in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 
 On first start, the admin account is created **only if no admin exists yet**. After that you can remove `ADMIN_PASSWORD` from `.env`.
+
+### Moving to another Supabase database (Admin -> Database)
+
+The `DB_*` settings in `.env` are the main database. To move to a different Supabase project without editing `.env`, open **Admin -> Database**:
+
+1. Paste the new project's **Session pooler** connection (or fill in the fields) and click **Test connection**. Nothing changes yet: it checks the connection, the schema and pending migrations.
+2. Tick **Switch the app to this database** (and **Copy all data from the current database** to bring your data along), then **Switch now**. Flyway brings the new database up to date, the data is copied into it, and the app switches without a restart. The old database is never modified.
+3. The choice is saved to `db-connection.json` (on the server: inside the `backend_data` Docker volume) and survives restarts and redeploys. **Go back to the backend/.env database** returns to the `DB_*` settings.
 
 During development the Vite dev server proxies `/api` to the backend. The browser therefore sees a single origin, and the refresh-token cookie works with `SameSite=Strict`.
 
@@ -72,7 +76,9 @@ What the tests cover:
 
 ```
 foreverdentalcare-backend/
-  docker-compose.yml       PostgreSQL
+  Dockerfile               production image (Maven build -> JRE 21, non-root)
+  docker-compose.prod.yml  production container (server)
+  deploy/                  Nginx config and deploy.sh for the server
   .env.example             all backend/database variables
   src/main/java/com/clinic/
     config/       AppProperties (typed env config), clinic-timezone Clock, Jackson, admin bootstrap
@@ -254,7 +260,7 @@ Steps:
    - `FORWARD_HEADERS_STRATEGY=native`, so rate limiting sees the real client IP behind the proxy
    - `ADMIN_EMAIL` / `ADMIN_PASSWORD` for the first start only
    - `UPLOAD_DIR` on persistent storage (and include it in backups)
-4. Use HTTPS (for example with Let's Encrypt) and managed PostgreSQL backups.
+4. Use HTTPS (for example with Let's Encrypt). Supabase handles database backups.
 
 Example Nginx config:
 

@@ -221,7 +221,7 @@ public class DatabaseSwitchService {
         if (dataSource.active().source() == SwitchableDataSource.Source.ENVIRONMENT) {
             throw new BusinessException("The app is already using the database from backend/.env");
         }
-        SwitchableDataSource.Active next = DatabaseConfig.environmentPool(envProperties, properties.poolSize());
+        SwitchableDataSource.Active next = DatabaseConfig.environmentPool(envProperties, properties);
         try (Connection ignored = next.pool().getConnection()) {
             // connection works
         } catch (SQLException | RuntimeException ex) {

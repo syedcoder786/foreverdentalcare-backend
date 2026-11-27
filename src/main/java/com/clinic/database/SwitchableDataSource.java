@@ -23,11 +23,17 @@ public class SwitchableDataSource extends AbstractDataSource implements Disposab
 
     /**
      * @param connection the saved connection; null when {@code source} is ENVIRONMENT.
+     * @param envSchema  clinic schema of the ENVIRONMENT connection (DB_SCHEMA); ignored for ADMIN_PANEL.
      */
-    public record Active(HikariDataSource pool, Source source, DatabaseConnection connection, String jdbcUrl, String username) {
+    public record Active(HikariDataSource pool, Source source, DatabaseConnection connection, String jdbcUrl, String username,
+                         String envSchema) {
 
+        /** Clinic schema of this connection, or null for the server default ({@code public}). */
         public String schema() {
-            return connection != null && connection.hasSchema() ? connection.schema() : null;
+            if (connection != null) {
+                return connection.hasSchema() ? connection.schema() : null;
+            }
+            return envSchema != null && !envSchema.isBlank() && !"public".equals(envSchema) ? envSchema : null;
         }
     }
 

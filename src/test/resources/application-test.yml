@@ -12,6 +12,8 @@ app:
     # Never pick up a database saved from the admin panel while testing.
     config-file: target/test-db-connection.json
     pool-size: 5
+    # H2 uses its default schema; no clinic schema in tests.
+    schema: ""
   cors:
     allowed-origins: http://localhost:5173
   jwt:
