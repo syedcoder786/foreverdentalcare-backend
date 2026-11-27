@@ -1,0 +1,52 @@
+# Production stack: PostgreSQL + backend. Nginx runs on the host and proxies to 127.0.0.1:8080.
+# Usage on the server (next to a filled-in .env):  docker compose -f docker-compose.prod.yml up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dental-clinic-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-dental_clinic}
+      POSTGRES_USER: ${DB_USERNAME:-dental_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      TZ: UTC
+    # Small-server tuning (the VM has ~1 GB RAM)
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=30"]
+    volumes:
+      - dental_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-dental_user} -d ${DB_NAME:-dental_clinic}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+
+  backend:
+    image: foreverdentalcare-backend:latest
+    build: .
+    container_name: dental-clinic-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      SERVER_PORT: "8080"
+      FORWARD_HEADERS_STRATEGY: native
+    # Only reachable from the host itself; the public goes through Nginx.
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - backend_data:/app/data
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  dental_pgdata:
+  backend_data:

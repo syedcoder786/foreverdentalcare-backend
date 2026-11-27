@@ -1,0 +1,15 @@
+# Keep secrets and build output out of the Docker build context
+.env
+.env.*
+db-connection.json
+storage-connection.json
+uploads/
+target/
+.git/
+.vscode/
+.idea/
+*.iml
+*.log
+README.md
+docker-compose*.yml
+Dockerfile
