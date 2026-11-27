@@ -7,6 +7,20 @@ cd "$(dirname "$0")/.."
 echo "==> Pulling latest code"
 git pull --ff-only origin main
 
+NGINX_SITE=/etc/nginx/sites-available/foreverdentalcare-backend
+if ! sudo cmp -s deploy/nginx/foreverdentalcare-backend.conf "$NGINX_SITE"; then
+  echo "==> Updating Nginx config"
+  sudo cp "$NGINX_SITE" "$NGINX_SITE.bak" 2>/dev/null || true
+  sudo install -m 644 -o root -g root deploy/nginx/foreverdentalcare-backend.conf "$NGINX_SITE"
+  if sudo nginx -t; then
+    sudo systemctl reload nginx
+  else
+    echo "Nginx config test failed; restoring the previous config." >&2
+    sudo cp "$NGINX_SITE.bak" "$NGINX_SITE"
+    exit 1
+  fi
+fi
+
 echo "==> Building image"
 sudo docker compose -f docker-compose.prod.yml build backend
 
