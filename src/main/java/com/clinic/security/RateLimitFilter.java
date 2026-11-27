@@ -34,7 +34,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
         this.rules = List.of(
                 new Rule("POST", "/api/public/appointments", "booking", cfg.bookingPerHour(), Duration.ofHours(1)),
                 new Rule("POST", "/api/auth/login", "login", cfg.loginPerMinute(), Duration.ofMinutes(1)),
-                new Rule("POST", "/api/auth/refresh", "refresh", cfg.refreshPerMinute(), Duration.ofMinutes(1)));
+                new Rule("POST", "/api/auth/refresh", "refresh", cfg.refreshPerMinute(), Duration.ofMinutes(1)),
+                // Patient sign-in (per IP; per-number limits are enforced in OtpService).
+                new Rule("POST", "/api/patient-auth/otp/request", "otp-request", 10, Duration.ofHours(1)),
+                new Rule("POST", "/api/patient-auth/otp/verify", "otp-verify", 30, Duration.ofMinutes(10)),
+                new Rule("POST", "/api/patient-auth/signup", "patient-signup", 10, Duration.ofHours(1)),
+                new Rule("POST", "/api/patient-auth/refresh", "patient-refresh", cfg.refreshPerMinute(), Duration.ofMinutes(1)),
+                new Rule("POST", "/api/patient/appointments", "patient-booking", cfg.bookingPerHour(), Duration.ofHours(1)));
     }
 
     @Override

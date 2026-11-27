@@ -1,6 +1,7 @@
 package com.clinic.service;
 
 import com.clinic.dto.AdminDtos.AdminAppointmentRequest;
+import com.clinic.dto.PatientDtos;
 import com.clinic.dto.request.AppointmentRequest;
 import com.clinic.dto.request.RescheduleRequest;
 import com.clinic.dto.response.AppointmentResponse;
@@ -11,6 +12,7 @@ import com.clinic.entity.DentalService;
 import com.clinic.entity.Doctor;
 import com.clinic.entity.Patient;
 import com.clinic.enums.AppointmentStatus;
+import com.clinic.exception.AuthenticationFailedException;
 import com.clinic.exception.BusinessException;
 import com.clinic.exception.InvalidStatusTransitionException;
 import com.clinic.exception.ResourceNotFoundException;
@@ -18,6 +20,9 @@ import com.clinic.exception.SlotUnavailableException;
 import com.clinic.mapper.AppointmentMapper;
 import com.clinic.repository.*;
 import com.clinic.util.ValidationPatterns;
+import com.clinic.enums.TemplatePurpose;
+import com.clinic.whatsapp.AppointmentMessageEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -57,6 +62,7 @@ public class AppointmentService {
     private final ScheduleEngine scheduleEngine;
     private final AppointmentMapper mapper;
     private final AuditService audit;
+    private final ApplicationEventPublisher events;
 
     /** Public booking. New appointments always start as PENDING and must be confirmed by the clinic. */
     @Transactional
@@ -65,7 +71,32 @@ public class AppointmentService {
                 r.fullName(), r.phone(), r.email(), r.message(), AppointmentStatus.PENDING);
         log.info("Appointment request {} created for doctor {} on {} {}", saved.getId(), saved.getDoctor().getId(),
                 saved.getAppointmentDate(), saved.getAppointmentTime());
+        events.publishEvent(new AppointmentMessageEvent(saved.getId(), TemplatePurpose.APPOINTMENT_RECEIVED));
         return mapper.toConfirmation(saved);
+    }
+
+    /** Booking by a signed-in patient (verified mobile number). Name, phone and email come from their profile. */
+    @Transactional
+    public BookingConfirmationResponse requestForPatient(Long patientId, PatientDtos.PatientBookingRequest r) {
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new AuthenticationFailedException("Please sign in again."));
+        Appointment saved = book(r.doctorId(), r.serviceId(), r.appointmentDate(), r.appointmentTime(),
+                patient.getFullName(), patient.getPhone(), patient.getEmail(), r.message(), AppointmentStatus.PENDING);
+        log.info("Appointment request {} created by patient {} for doctor {} on {} {}", saved.getId(), patientId,
+                saved.getDoctor().getId(), saved.getAppointmentDate(), saved.getAppointmentTime());
+        events.publishEvent(new AppointmentMessageEvent(saved.getId(), TemplatePurpose.APPOINTMENT_RECEIVED));
+        return mapper.toConfirmation(saved);
+    }
+
+    /** The signed-in patient's appointments, newest first. */
+    @Transactional(readOnly = true)
+    public List<PatientDtos.PatientAppointmentResponse> listForPatient(Long patientId) {
+        return appointmentRepository.findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(patientId).stream()
+                .map(a -> new PatientDtos.PatientAppointmentResponse(
+                        a.getId(), a.getStatus(), a.getService().getName(), a.getDoctor().getFullName(),
+                        a.getDoctor().getSlug(), a.getAppointmentDate(), a.getAppointmentTime(), a.getEndTime(),
+                        a.getMessage(), a.getCreatedAt()))
+                .toList();
     }
 
     /** Appointment entered by clinic staff (e.g. phone booking). Same rules; may start as CONFIRMED. */
@@ -79,6 +110,8 @@ public class AppointmentService {
                 r.fullName(), r.phone(), r.email(), r.message(), initial);
         audit.record("CREATE", "Appointment", saved.getId(), "Manual booking with " + saved.getDoctor().getFullName()
                 + " on " + saved.getAppointmentDate() + " " + saved.getAppointmentTime());
+        events.publishEvent(new AppointmentMessageEvent(saved.getId(),
+                initial == AppointmentStatus.CONFIRMED ? TemplatePurpose.APPOINTMENT_CONFIRMED : TemplatePurpose.APPOINTMENT_RECEIVED));
         return mapper.toResponse(saved);
     }
 
@@ -153,6 +186,11 @@ public class AppointmentService {
         appointment.changeStatus(target);
         Appointment saved = appointmentRepository.saveAndFlush(appointment);
         audit.record("STATUS", "Appointment", id, current + " -> " + target);
+        if (target == AppointmentStatus.CONFIRMED) {
+            events.publishEvent(new AppointmentMessageEvent(id, TemplatePurpose.APPOINTMENT_CONFIRMED));
+        } else if (target == AppointmentStatus.CANCELLED) {
+            events.publishEvent(new AppointmentMessageEvent(id, TemplatePurpose.APPOINTMENT_CANCELLED));
+        }
         return mapper.toResponse(saved);
     }
 
@@ -178,6 +216,7 @@ public class AppointmentService {
         appointment.setEndTime(end);
         Appointment saved = saveGuardingSlot(appointment);
         audit.record("RESCHEDULE", "Appointment", id, previous + " -> " + saved.getAppointmentDate() + " " + saved.getAppointmentTime());
+        events.publishEvent(new AppointmentMessageEvent(id, TemplatePurpose.APPOINTMENT_RESCHEDULED));
         return mapper.toResponse(saved);
     }
 

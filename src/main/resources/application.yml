@@ -55,6 +55,12 @@ app:
       # cloudinary://<api_key>:<api_secret>@<cloud_name> - a secret, keep it in backend/.env only.
       url: ${CLOUDINARY_URL:}
       folder: ${CLOUDINARY_FOLDER:forever-dental-care}
+  # Patient sign-in with a WhatsApp code. WhatsApp credentials are set in Admin -> Settings -> WhatsApp sign-in.
+  patient-auth:
+    # DEVELOPMENT ONLY: while WhatsApp is not set up, write sign-in codes to the server log. Never enable in production.
+    log-otp-codes: ${OTP_LOG_CODES:false}
+    refresh-token-ttl-days: ${PATIENT_SESSION_DAYS:30}
+    whatsapp-api-version: ${WHATSAPP_API_VERSION:v25.0}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   jwt:

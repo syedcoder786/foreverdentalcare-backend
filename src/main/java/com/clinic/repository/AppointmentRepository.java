@@ -54,6 +54,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
     @EntityGraph(attributePaths = {"patient", "service", "doctor"})
     Optional<Appointment> findWithDetailsById(Long id);
 
+    @EntityGraph(attributePaths = {"service", "doctor"})
+    List<Appointment> findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(Long patientId);
+
     @Override
     @EntityGraph(attributePaths = {"patient", "service", "doctor"})
     Page<Appointment> findAll(Specification<Appointment> spec, Pageable pageable);

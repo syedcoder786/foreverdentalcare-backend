@@ -114,8 +114,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/patient-auth/otp/request", "/api/patient-auth/otp/verify",
+                                "/api/patient-auth/signup", "/api/patient-auth/refresh", "/api/patient-auth/logout").permitAll()
                         .requestMatchers("/actuator/health", "/error").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/patient/**").hasRole("PATIENT")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth -> oauth
                         .bearerTokenResolver(adminBearerTokenResolver())
@@ -126,12 +129,13 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /** Reads "Authorization: Bearer ..." only for admin APIs; public and auth endpoints ignore it. */
+    /** Reads "Authorization: Bearer ..." only for admin and patient APIs; public and sign-in endpoints ignore it. */
     private static BearerTokenResolver adminBearerTokenResolver() {
         DefaultBearerTokenResolver delegate = new DefaultBearerTokenResolver();
-        return request -> request.getRequestURI().startsWith(request.getContextPath() + "/api/admin/")
-                ? delegate.resolve(request)
-                : null;
+        return request -> {
+            String path = request.getRequestURI().substring(request.getContextPath().length());
+            return path.startsWith("/api/admin/") || path.startsWith("/api/patient/") ? delegate.resolve(request) : null;
+        };
     }
 
     private CorsConfigurationSource corsConfigurationSource(AppProperties properties) {

@@ -28,6 +28,18 @@ public final class JsonValues {
     public record SectionItem(String icon, String title, String text, String imageUrl) {
     }
 
+    /** What fills one WhatsApp template placeholder: a {@code TemplateParamSource} name, plus text for CUSTOM_TEXT. */
+    public record TemplateParam(String source, String text) {
+    }
+
+    @Converter
+    public static class TemplateParamListConverter extends ListConverter<TemplateParam> {
+        public TemplateParamListConverter() {
+            super(new TypeReference<>() {
+            });
+        }
+    }
+
     abstract static class ListConverter<T> implements AttributeConverter<List<T>, String> {
         private final TypeReference<List<T>> type;
 
