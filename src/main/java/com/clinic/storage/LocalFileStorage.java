@@ -1,7 +1,6 @@
 package com.clinic.storage;
 
 import com.clinic.config.AppProperties;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
@@ -16,9 +15,11 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-/** Stores uploads on the local filesystem and serves them via GET /api/public/files/{fileName}. */
+/**
+ * Stores uploads on the local filesystem and serves them via GET /api/public/files/{fileName}. Always present, so
+ * files uploaded before a switch to Cloudinary keep being served. The app uses it through {@link SwitchableFileStorage}.
+ */
 @Component
-@ConditionalOnProperty(name = "app.storage.provider", havingValue = "local", matchIfMissing = true)
 public class LocalFileStorage implements FileStorage {
 
     /** Generated names only: protects against path traversal on load. */
@@ -34,6 +35,10 @@ public class LocalFileStorage implements FileStorage {
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot create upload directory " + root, e);
         }
+    }
+
+    public Path root() {
+        return root;
     }
 
     @Override

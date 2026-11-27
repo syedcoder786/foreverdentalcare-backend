@@ -22,8 +22,12 @@ public record AppProperties(
         @Valid @NotNull RateLimit rateLimit,
         @Valid @NotNull Storage storage
 ) {
+    /**
+     * @param configFile where the storage chosen in Admin -> Image storage is saved. When this file exists it wins over
+     *                   {@code provider} and {@code cloudinary}; delete it to go back to them.
+     */
     public record Storage(@NotBlank String provider, @NotBlank String uploadDir, @Min(1024) long maxFileSizeBytes,
-                          Cloudinary cloudinary) {
+                          Cloudinary cloudinary, String configFile) {
 
         /** Only used when {@code provider=cloudinary}; {@code url} is the CLOUDINARY_URL connection string. */
         public record Cloudinary(String url, String folder) {

@@ -52,6 +52,9 @@ app:
   storage:
     # "local" stores files on disk under upload-dir; "cloudinary" uploads them to Cloudinary (needs CLOUDINARY_URL).
     provider: ${STORAGE_PROVIDER:local}
+    # Storage chosen in Admin -> Image storage is saved here and overrides provider / cloudinary below.
+    # Contains the Cloudinary API secret: keep it out of git. Delete the file to go back to the settings below.
+    config-file: ${STORAGE_CONFIG_FILE:./storage-connection.json}
     upload-dir: ${UPLOAD_DIR:./uploads}
     max-file-size-bytes: ${UPLOAD_MAX_BYTES:5242880}
     cloudinary:

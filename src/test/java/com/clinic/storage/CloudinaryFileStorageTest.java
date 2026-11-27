@@ -1,39 +1,52 @@
 package com.clinic.storage;
 
-import com.clinic.config.AppProperties;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CloudinaryFileStorageTest {
 
-    private static AppProperties props(AppProperties.Storage.Cloudinary cloudinary) {
-        return new AppProperties("Asia/Kolkata",
-                new AppProperties.Cors(List.of()),
-                new AppProperties.Jwt("x".repeat(32), 15, 7, "test"),
-                new AppProperties.Cookie(false, "Strict"),
-                new AppProperties.AdminBootstrap(null, null, null),
-                new AppProperties.RateLimit(10, 5, 30),
-                new AppProperties.Storage("cloudinary", "./uploads", 5_242_880, cloudinary));
+    @Test
+    void refusesIncompleteSettings() {
+        assertThatThrownBy(() -> new CloudinaryFileStorage(null)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new CloudinaryFileStorage(new CloudinarySettings("demo", "123", " ", "f")))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("API secret");
     }
 
     @Test
-    void refusesToStartWithoutCloudinaryUrl() {
-        assertThatThrownBy(() -> new CloudinaryFileStorage(props(null)))
-                .isInstanceOf(IllegalStateException.class).hasMessageContaining("CLOUDINARY_URL");
-        assertThatThrownBy(() -> new CloudinaryFileStorage(props(new AppProperties.Storage.Cloudinary("", "f"))))
-                .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> new CloudinaryFileStorage(props(new AppProperties.Storage.Cloudinary("https://wrong", "f"))))
-                .isInstanceOf(IllegalStateException.class);
+    void readsCloudinaryUrl() {
+        CloudinarySettings s = CloudinarySettings.fromUrl(" cloudinary://123456789012345:abc-DEF_9@my-cloud ", "/clinic/photos/");
+        assertThat(s.cloudName()).isEqualTo("my-cloud");
+        assertThat(s.apiKey()).isEqualTo("123456789012345");
+        assertThat(s.apiSecret()).isEqualTo("abc-DEF_9");
+        assertThat(s.folder()).isEqualTo("clinic/photos");
+        assertThat(s.maskedUrl()).isEqualTo("cloudinary://123456789012345:********@my-cloud").doesNotContain("abc-DEF_9");
+        assertThat(s.toString()).doesNotContain("abc-DEF_9");
     }
 
     @Test
-    void startsWithValidUrlAndNeverServesFilesLocally() {
-        CloudinaryFileStorage storage = new CloudinaryFileStorage(
-                props(new AppProperties.Storage.Cloudinary("cloudinary://key:secret@demo", "clinic")));
+    void rejectsOtherUrls() {
+        assertThatThrownBy(() -> CloudinarySettings.fromUrl("https://wrong", null)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("CLOUDINARY_URL");
+        assertThatThrownBy(() -> CloudinarySettings.fromUrl(null, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> CloudinarySettings.fromUrl("cloudinary://keyonly@demo", null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void startsWithValidSettingsAndNeverServesFilesLocally() {
+        CloudinaryFileStorage storage = new CloudinaryFileStorage(CloudinarySettings.fromUrl("cloudinary://key:secret@demo", "clinic"));
+        assertThat(storage.client().config.cloudName).isEqualTo("demo");
+        assertThat(storage.client().config.secure).isTrue();
         assertThat(storage.load("anything.png")).isEmpty();
+    }
+
+    @Test
+    void explainsCloudinaryErrors() {
+        CloudinarySettings s = new CloudinarySettings("demo", "123", "x", null);
+        assertThat(StorageSettingsService.friendlyError(new RuntimeException("Invalid cloud_name demo"), s)).contains("cloud name \"demo\"");
+        assertThat(StorageSettingsService.friendlyError(new RuntimeException("Invalid api_key 123"), s)).contains("API key 123");
+        assertThat(StorageSettingsService.friendlyError(new RuntimeException("wrapped", new java.net.UnknownHostException("api.cloudinary.com")), s))
+                .contains("Could not reach Cloudinary");
     }
 }

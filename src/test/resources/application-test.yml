@@ -28,6 +28,8 @@ app:
     password: TestPassword123!
   storage:
     provider: local
+    # Never pick up storage settings saved from the admin panel while testing.
+    config-file: target/test-storage-connection.json
     upload-dir: target/test-uploads
     max-file-size-bytes: 1048576
   rate-limit:
