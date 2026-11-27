@@ -8,6 +8,10 @@ spring:
 
 app:
   timezone: Asia/Kolkata
+  database:
+    # Never pick up a database saved from the admin panel while testing.
+    config-file: target/test-db-connection.json
+    pool-size: 5
   cors:
     allowed-origins: http://localhost:5173
   jwt:

@@ -9,8 +9,6 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:dental_clinic}
     username: ${DB_USERNAME:dental_user}
     password: ${DB_PASSWORD}
-    hikari:
-      maximum-pool-size: 10
   jpa:
     open-in-view: false
     hibernate:
@@ -46,6 +44,11 @@ management:
 
 app:
   timezone: ${APP_TIMEZONE:Asia/Kolkata}
+  database:
+    # A database chosen in Admin -> Database (e.g. Supabase) is saved here and overrides the DB_* settings above.
+    # Contains the database password: keep it out of git. Delete the file to go back to the DB_* settings.
+    config-file: ${DB_CONFIG_FILE:./db-connection.json}
+    pool-size: ${DB_POOL_SIZE:10}
   storage:
     # "local" stores files on disk under upload-dir; "cloudinary" uploads them to Cloudinary (needs CLOUDINARY_URL).
     provider: ${STORAGE_PROVIDER:local}

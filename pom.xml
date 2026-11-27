@@ -61,7 +61,6 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
         </dependency>
 
         <!-- Spring Security JWT support: bearer-token validation (resource server) and token issuing (Nimbus) -->
