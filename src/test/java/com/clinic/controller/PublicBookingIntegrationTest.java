@@ -32,7 +32,7 @@ class PublicBookingIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/api/public/services"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.length()").value(8));
+                .andExpect(jsonPath("$.data.length()").value(16)); // 13 dental + 3 Unani (V15 catalogue)
         mockMvc.perform(get("/api/public/clinic"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.clinicName").exists())

@@ -131,8 +131,8 @@ class ContentManagementIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/api/public/specialties/unani-medicine"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.doctors.length()").value(1))
-                .andExpect(jsonPath("$.data.services[0].name").value("Test Unani Consultation"));
+                .andExpect(jsonPath("$.data.doctors.length()").value(2)) // seeded Dr. Faiza Khan + the test doctor
+                .andExpect(jsonPath("$.data.services[?(@.name == 'Test Unani Consultation')]").exists());
     }
 
     @Test
