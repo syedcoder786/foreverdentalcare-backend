@@ -11,7 +11,10 @@ public record ServiceResponse(
         List<String> details,
         String icon,
         String imageUrl,
+        /** The treatment's own fee (separate from the doctor's consultation fee). */
         BigDecimal consultationFee,
+        /** Time-limited offer on that fee; public responses omit ended offers. */
+        ServiceOffer offer,
         Integer estimatedDuration,
         Integer displayOrder,
         boolean active,

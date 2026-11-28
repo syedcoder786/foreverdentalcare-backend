@@ -77,7 +77,8 @@ public class WhatsAppClient {
 
     public WhatsAppClient(PatientAuthProperties properties, ObjectMapper objectMapper) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(Duration.ofSeconds(5));
+        // Generous connect timeout: connections to graph.facebook.com occasionally stall on some networks.
+        requestFactory.setConnectTimeout(Duration.ofSeconds(10));
         requestFactory.setReadTimeout(Duration.ofSeconds(10));
         this.restClient = RestClient.builder()
                 .baseUrl(properties.whatsappApiBaseUrl())
@@ -239,13 +240,7 @@ public class WhatsAppClient {
                 "type", "template",
                 "template", template);
         try {
-            restClient.post()
-                    .uri("/{version}/{phoneNumberId}/messages", apiVersion, settings.getPhoneNumberId().trim())
-                    .headers(h -> h.setBearerAuth(settings.getAccessToken().trim()))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .toBodilessEntity();
+            sendWithConnectRetry(settings, body);
         } catch (RestClientResponseException ex) {
             String message = metaErrorMessage(ex.getResponseBodyAsString());
             log.warn("WhatsApp API rejected template '{}' (HTTP {}): {}", name, ex.getStatusCode().value(), message);
@@ -255,6 +250,49 @@ public class WhatsAppClient {
             log.warn("WhatsApp API unreachable: {}", ex.getMessage());
             throw new WhatsAppException("WhatsApp could not be reached. Please try again.");
         }
+    }
+
+    /**
+     * Posts the message, retrying once if the connection could not be opened. A failed connect means the request never
+     * reached WhatsApp, so retrying cannot send the message twice. Read timeouts and API errors are not retried.
+     */
+    private void sendWithConnectRetry(WhatsAppSettings settings, Map<String, Object> body) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                restClient.post()
+                        .uri("/{version}/{phoneNumberId}/messages", apiVersion, settings.getPhoneNumberId().trim())
+                        .headers(h -> h.setBearerAuth(settings.getAccessToken().trim()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(body)
+                        .retrieve()
+                        .toBodilessEntity();
+                return;
+            } catch (org.springframework.web.client.ResourceAccessException ex) {
+                if (attempt >= 2 || !isConnectFailure(ex)) {
+                    throw ex;
+                }
+                log.info("WhatsApp API connection failed ({}), retrying once", ex.getMostSpecificCause().getMessage());
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw ex;
+                }
+            }
+        }
+    }
+
+    private static boolean isConnectFailure(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof java.net.ConnectException || t instanceof java.net.UnknownHostException
+                    || t instanceof java.net.NoRouteToHostException) {
+                return true;
+            }
+            if (t instanceof java.net.SocketTimeoutException && String.valueOf(t.getMessage()).toLowerCase().contains("connect")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static List<Map<String, Object>> textParams(List<String> values) {

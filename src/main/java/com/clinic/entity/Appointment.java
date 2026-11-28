@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -55,6 +56,26 @@ public class Appointment {
     @Column(length = 1000)
     private String message;
 
+    /** Doctor's consultation fee at booking time. Null = discussed at consultation. */
+    @Column(name = "consultation_fee", precision = 10, scale = 2)
+    private BigDecimal consultationFee;
+
+    /** Set while this appointment carries the online first-visit discount (see FirstVisitOfferService). */
+    @Column(name = "first_visit_discount_percent")
+    private Integer firstVisitDiscountPercent;
+
+    /** Treatment's own fee at booking time. Null = discussed at consultation. */
+    @Column(name = "treatment_fee", precision = 10, scale = 2)
+    private BigDecimal treatmentFee;
+
+    /** Treatment offer percent, when an offer covered the appointment date at booking (or reschedule) time. */
+    @Column(name = "treatment_discount_percent")
+    private Integer treatmentDiscountPercent;
+
+    /** Booked by the patient on the website (only these can carry the first-visit discount). */
+    @Column(name = "online_booking", nullable = false)
+    private boolean onlineBooking;
+
     /**
      * TRUE while the appointment occupies its slot, NULL when cancelled. Backed by the unique
      * constraint (appointment_date, appointment_time, slot_active) which prevents double booking.
@@ -72,6 +93,26 @@ public class Appointment {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    /** Total payable: consultation and treatment fees after their discounts. Null when neither fee is known. */
+    public BigDecimal finalFee() {
+        if (consultationFee == null && treatmentFee == null) {
+            return null;
+        }
+        return discounted(consultationFee, firstVisitDiscountPercent).add(discounted(treatmentFee, treatmentDiscountPercent));
+    }
+
+    /** Fee after a percent discount, rounded to the whole rupee (same rounding as the website). */
+    public static BigDecimal discounted(BigDecimal fee, Integer percent) {
+        if (fee == null) {
+            return BigDecimal.ZERO;
+        }
+        if (percent == null) {
+            return fee;
+        }
+        return fee.multiply(BigDecimal.valueOf(100L - percent))
+                .divide(BigDecimal.valueOf(100), 0, java.math.RoundingMode.HALF_UP);
+    }
 
     /** Changes status and keeps the slot-occupancy flag consistent. Transition rules are enforced by the service layer. */
     public void changeStatus(AppointmentStatus newStatus) {

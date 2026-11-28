@@ -63,12 +63,13 @@ public class AppointmentService {
     private final AppointmentMapper mapper;
     private final AuditService audit;
     private final ApplicationEventPublisher events;
+    private final FirstVisitOfferService firstVisitOffer;
 
     /** Public booking. New appointments always start as PENDING and must be confirmed by the clinic. */
     @Transactional
     public BookingConfirmationResponse requestAppointment(AppointmentRequest r) {
         Appointment saved = book(r.doctorId(), r.serviceId(), r.appointmentDate(), r.appointmentTime(),
-                r.fullName(), r.phone(), r.email(), r.message(), AppointmentStatus.PENDING);
+                r.fullName(), r.phone(), r.email(), r.message(), AppointmentStatus.PENDING, true);
         log.info("Appointment request {} created for doctor {} on {} {}", saved.getId(), saved.getDoctor().getId(),
                 saved.getAppointmentDate(), saved.getAppointmentTime());
         events.publishEvent(new AppointmentMessageEvent(saved.getId(), TemplatePurpose.APPOINTMENT_RECEIVED));
@@ -81,7 +82,7 @@ public class AppointmentService {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new AuthenticationFailedException("Please sign in again."));
         Appointment saved = book(r.doctorId(), r.serviceId(), r.appointmentDate(), r.appointmentTime(),
-                patient.getFullName(), patient.getPhone(), patient.getEmail(), r.message(), AppointmentStatus.PENDING);
+                patient.getFullName(), patient.getPhone(), patient.getEmail(), r.message(), AppointmentStatus.PENDING, true);
         log.info("Appointment request {} created by patient {} for doctor {} on {} {}", saved.getId(), patientId,
                 saved.getDoctor().getId(), saved.getAppointmentDate(), saved.getAppointmentTime());
         events.publishEvent(new AppointmentMessageEvent(saved.getId(), TemplatePurpose.APPOINTMENT_RECEIVED));
@@ -95,7 +96,8 @@ public class AppointmentService {
                 .map(a -> new PatientDtos.PatientAppointmentResponse(
                         a.getId(), a.getStatus(), a.getService().getName(), a.getDoctor().getFullName(),
                         a.getDoctor().getSlug(), a.getAppointmentDate(), a.getAppointmentTime(), a.getEndTime(),
-                        a.getMessage(), a.getCreatedAt()))
+                        a.getMessage(), a.getCreatedAt(), a.getConsultationFee(), a.getFirstVisitDiscountPercent(),
+                        a.getTreatmentFee(), a.getTreatmentDiscountPercent(), a.finalFee()))
                 .toList();
     }
 
@@ -107,7 +109,7 @@ public class AppointmentService {
             throw new BusinessException("initialStatus", "New appointments can only be PENDING or CONFIRMED");
         }
         Appointment saved = book(r.doctorId(), r.serviceId(), r.appointmentDate(), r.appointmentTime(),
-                r.fullName(), r.phone(), r.email(), r.message(), initial);
+                r.fullName(), r.phone(), r.email(), r.message(), initial, false);
         audit.record("CREATE", "Appointment", saved.getId(), "Manual booking with " + saved.getDoctor().getFullName()
                 + " on " + saved.getAppointmentDate() + " " + saved.getAppointmentTime());
         events.publishEvent(new AppointmentMessageEvent(saved.getId(),
@@ -116,7 +118,7 @@ public class AppointmentService {
     }
 
     private Appointment book(Long doctorId, Long serviceId, LocalDate date, LocalTime time, String fullName,
-                             String phone, String email, String message, AppointmentStatus status) {
+                             String phone, String email, String message, AppointmentStatus status, boolean online) {
         DentalService service = serviceRepository.findById(serviceId)
                 .filter(s -> s.isActive() && s.getSpecialty().isActive())
                 .orElseThrow(() -> new BusinessException("serviceId", "Selected treatment is not available"));
@@ -139,7 +141,13 @@ public class AppointmentService {
         appointment.setAppointmentTime(time);
         appointment.setEndTime(end);
         appointment.setMessage(ValidationPatterns.trimToNull(message));
+        // Consultation (doctor) and treatment fees are kept apart: each has its own discount.
+        appointment.setConsultationFee(doctor.getConsultationFee());
+        appointment.setTreatmentFee(service.getConsultationFee());
+        appointment.setTreatmentDiscountPercent(service.offerPercentFor(date));
+        appointment.setOnlineBooking(online);
         appointment.changeStatus(status);
+        firstVisitOffer.applyOnBooking(appointment);
         return saveGuardingSlot(appointment);
     }
 
@@ -184,6 +192,7 @@ public class AppointmentService {
             throw new InvalidStatusTransitionException(current, target);
         }
         appointment.changeStatus(target);
+        firstVisitOffer.onStatusChanged(appointment, target);
         Appointment saved = appointmentRepository.saveAndFlush(appointment);
         audit.record("STATUS", "Appointment", id, current + " -> " + target);
         if (target == AppointmentStatus.CONFIRMED) {
@@ -211,6 +220,10 @@ public class AppointmentService {
         LocalTime end = scheduleEngine.requireBookable(doctor, request.appointmentDate(), request.appointmentTime(),
                 appointment.getService().getEstimatedDuration(), appointment.getId());
         String previous = appointment.getAppointmentDate() + " " + appointment.getAppointmentTime();
+        // A discount already given is honoured; moving into a running offer's dates earns it.
+        if (appointment.getTreatmentDiscountPercent() == null && appointment.getTreatmentFee() != null) {
+            appointment.setTreatmentDiscountPercent(appointment.getService().offerPercentFor(request.appointmentDate()));
+        }
         appointment.setAppointmentDate(request.appointmentDate());
         appointment.setAppointmentTime(request.appointmentTime());
         appointment.setEndTime(end);

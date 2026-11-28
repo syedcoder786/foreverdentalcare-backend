@@ -40,6 +40,9 @@ public class ClinicSettingsService {
     }
 
     private void validate(ClinicSettingsRequest r) {
+        if (Boolean.TRUE.equals(r.firstVisitOfferEnabled()) && r.firstVisitDiscountPercent() == null) {
+            throw new BusinessException("firstVisitDiscountPercent", "Set the first-visit discount percentage");
+        }
         if (!r.closingTime().isAfter(r.openingTime())) {
             throw new BusinessException("closingTime", "Closing time must be after opening time");
         }

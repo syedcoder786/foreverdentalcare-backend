@@ -32,6 +32,8 @@ public record ClinicSettingsResponse(
         String instagramUrl,
         String youtubeUrl,
         String googleReviewsUrl,
-        String mapLinkUrl
+        String mapLinkUrl,
+        Integer firstVisitDiscountPercent,
+        boolean firstVisitOfferEnabled
 ) {
 }

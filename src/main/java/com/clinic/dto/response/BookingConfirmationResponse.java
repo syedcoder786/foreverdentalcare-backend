@@ -2,6 +2,7 @@ package com.clinic.dto.response;
 
 import com.clinic.enums.AppointmentStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -13,6 +14,11 @@ public record BookingConfirmationResponse(
         String doctorName,
         LocalDate appointmentDate,
         LocalTime appointmentTime,
-        LocalTime endTime
+        LocalTime endTime,
+        BigDecimal consultationFee,
+        Integer firstVisitDiscountPercent,
+        BigDecimal treatmentFee,
+        Integer treatmentDiscountPercent,
+        BigDecimal finalFee
 ) {
 }

@@ -95,6 +95,14 @@ public class ClinicSettings {
     @Column(name = "map_link_url", length = 500)
     private String mapLinkUrl;
 
+    // ---- First-visit offer (fee comes from the treatment / doctor) ----
+    /** Percent off the consultation fee on a patient's first appointment booked online (1-100). */
+    @Column(name = "first_visit_discount_percent")
+    private Integer firstVisitDiscountPercent;
+
+    @Column(name = "first_visit_offer_enabled", nullable = false)
+    private boolean firstVisitOfferEnabled;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

@@ -20,7 +20,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.List;
 import java.util.Set;
 
@@ -38,6 +41,7 @@ public class DentalServiceCatalogService {
     private final ServiceMapper mapper;
     private final DoctorMapper doctorMapper;
     private final AuditService audit;
+    private final Clock clinicClock;
 
     /** Public catalogue: active services in active specialties that at least one active doctor offers. */
     @Transactional(readOnly = true)
@@ -75,6 +79,7 @@ public class DentalServiceCatalogService {
             throw new ConflictException("A service with this name already exists");
         }
         DentalService service = new DentalService();
+        validateOffer(request, null);
         mapper.apply(request, service);
         service.setSpecialty(loadSpecialty(request.specialtyId()));
         service.setSlug(Slugs.unique(request.slug(), request.name(), repository::existsBySlug));
@@ -92,6 +97,7 @@ public class DentalServiceCatalogService {
         if (repository.existsByNameIgnoreCaseAndIdNot(request.name().trim(), id)) {
             throw new ConflictException("A service with this name already exists");
         }
+        validateOffer(request, service);
         mapper.apply(request, service);
         service.setSpecialty(loadSpecialty(request.specialtyId()));
         if (request.slug() != null && !request.slug().isBlank() && !request.slug().equals(service.getSlug())) {
@@ -154,6 +160,40 @@ public class DentalServiceCatalogService {
 
     private Specialty loadSpecialty(Long id) {
         return specialtyRepository.findById(id).orElseThrow(() -> new BusinessException("specialtyId", "Selected specialty does not exist"));
+    }
+
+    /**
+     * Offer rules: percent, start and end come together; end on or after start; the treatment needs a fee to take a
+     * percentage of. A new or changed offer may not end in the past, but an existing (possibly already ended) offer
+     * can be saved unchanged so unrelated edits keep working. Bookings already made keep the discount they were given.
+     */
+    private void validateOffer(ServiceRequest r, DentalService existing) {
+        Integer percent = r.offerDiscountPercent();
+        if (percent == null) {
+            if (r.offerStartDate() != null || r.offerEndDate() != null) {
+                throw new BusinessException("offerDiscountPercent", "Enter the offer percentage, or clear the offer dates");
+            }
+            return;
+        }
+        if (r.offerStartDate() == null) {
+            throw new BusinessException("offerStartDate", "Choose when the offer starts");
+        }
+        if (r.offerEndDate() == null) {
+            throw new BusinessException("offerEndDate", "Choose when the offer ends");
+        }
+        if (r.offerEndDate().isBefore(r.offerStartDate())) {
+            throw new BusinessException("offerEndDate", "The offer must end on or after its start date");
+        }
+        if (r.consultationFee() == null || r.consultationFee().signum() <= 0) {
+            throw new BusinessException("consultationFee", "Set a fee for this treatment to give a percentage off");
+        }
+        boolean unchanged = existing != null && existing.hasOffer()
+                && Objects.equals(existing.getOfferDiscountPercent(), percent)
+                && existing.getOfferStartDate().equals(r.offerStartDate())
+                && existing.getOfferEndDate().equals(r.offerEndDate());
+        if (!unchanged && r.offerEndDate().isBefore(LocalDate.now(clinicClock))) {
+            throw new BusinessException("offerEndDate", "The offer end date is in the past");
+        }
     }
 
     private DentalService load(Long id) {

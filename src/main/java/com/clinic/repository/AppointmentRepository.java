@@ -11,8 +11,10 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,6 +66,19 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
     @Override
     @EntityGraph(attributePaths = {"patient", "service", "doctor"})
     List<Appointment> findAll(Specification<Appointment> spec);
+
+    boolean existsByPatientIdAndStatusInAndIdNot(Long patientId, Collection<AppointmentStatus> statuses, long excludeId);
+
+    /** The patient's active appointment currently carrying the first-visit discount, if any. */
+    Optional<Appointment> findFirstByPatientIdAndStatusInAndFirstVisitDiscountPercentIsNotNullAndIdNot(
+            Long patientId, Collection<AppointmentStatus> statuses, long excludeId);
+
+    /**
+     * Earliest pending online booking of the patient that has a fee but no discount (receives it when the holder is
+     * cancelled).
+     */
+    Optional<Appointment> findFirstByPatientIdAndStatusAndOnlineBookingTrueAndConsultationFeeGreaterThanAndFirstVisitDiscountPercentIsNullAndIdNotOrderByAppointmentDateAscAppointmentTimeAsc(
+            Long patientId, AppointmentStatus status, BigDecimal minFee, long excludeId);
 
     boolean existsByServiceId(Long serviceId);
 

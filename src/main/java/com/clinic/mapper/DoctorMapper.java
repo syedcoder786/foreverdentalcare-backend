@@ -12,6 +12,12 @@ import java.util.List;
 @Component
 public class DoctorMapper {
 
+    private final ServiceOfferMapper offerMapper;
+
+    public DoctorMapper(ServiceOfferMapper offerMapper) {
+        this.offerMapper = offerMapper;
+    }
+
     public DoctorAdminResponse toAdmin(Doctor d) {
         return new DoctorAdminResponse(
                 d.getId(), d.getFullName(), d.getSlug(), d.getProfessionalTitle(), d.getGender(), d.getProfileImageUrl(),
@@ -82,11 +88,12 @@ public class DoctorMapper {
                 .toList();
     }
 
-    private static List<ServiceRef> services(Doctor d, boolean activeOnly) {
+    private List<ServiceRef> services(Doctor d, boolean activeOnly) {
         return d.getServices().stream()
                 .filter(s -> !activeOnly || (s.isActive() && s.getSpecialty().isActive()))
                 .map(s -> new ServiceRef(s.getId(), s.getName(), s.getSlug(), s.getSpecialty().getId(),
-                        s.getSpecialty().getName(), s.getEstimatedDuration(), s.getConsultationFee(), s.isActive()))
+                        s.getSpecialty().getName(), s.getEstimatedDuration(), s.getConsultationFee(), s.isActive(),
+                        offerMapper.toOffer(s, activeOnly)))
                 .toList();
     }
 }

@@ -29,7 +29,13 @@ public class AppointmentMapper {
                 a.getStatus().allowedTransitions(),
                 a.getStatus().isReschedulable(),
                 a.getCreatedAt(),
-                a.getUpdatedAt());
+                a.getUpdatedAt(),
+                a.getConsultationFee(),
+                a.getFirstVisitDiscountPercent(),
+                a.getTreatmentFee(),
+                a.getTreatmentDiscountPercent(),
+                a.finalFee(),
+                a.isOnlineBooking());
     }
 
     public BookingConfirmationResponse toConfirmation(Appointment a) {
@@ -40,6 +46,11 @@ public class AppointmentMapper {
                 a.getDoctor().getFullName(),
                 a.getAppointmentDate(),
                 a.getAppointmentTime(),
-                a.getEndTime());
+                a.getEndTime(),
+                a.getConsultationFee(),
+                a.getFirstVisitDiscountPercent(),
+                a.getTreatmentFee(),
+                a.getTreatmentDiscountPercent(),
+                a.finalFee());
     }
 }

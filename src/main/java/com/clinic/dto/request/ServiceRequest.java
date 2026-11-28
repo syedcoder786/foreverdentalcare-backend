@@ -5,6 +5,7 @@ import com.clinic.util.ValidationPatterns;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -37,6 +38,15 @@ public record ServiceRequest(
         @DecimalMin(value = "0.0", message = "Fee cannot be negative")
         @Digits(integer = 8, fraction = 2, message = "Fee must have at most 2 decimal places")
         BigDecimal consultationFee,
+
+        /** Optional time-limited offer on the fee: percent, start and end are given together or all left empty. */
+        @Min(value = 1, message = "Offer must be at least 1%")
+        @Max(value = 100, message = "Offer cannot exceed 100%")
+        Integer offerDiscountPercent,
+
+        LocalDate offerStartDate,
+
+        LocalDate offerEndDate,
 
         @NotNull(message = "Estimated duration is required")
         @Min(value = 5, message = "Duration must be at least 5 minutes")

@@ -76,6 +76,13 @@ public record ClinicSettingsRequest(
         @Size(max = 300) @Pattern(regexp = ValidationPatterns.WEB_URL, message = "Use a full https:// URL") String googleReviewsUrl,
 
         /** Share link to the clinic on Google Maps (e.g. https://maps.app.goo.gl/...), used for "Get directions". */
-        @Size(max = 500) @Pattern(regexp = ValidationPatterns.WEB_URL, message = "Use a full https:// URL") String mapLinkUrl
+        @Size(max = 500) @Pattern(regexp = ValidationPatterns.WEB_URL, message = "Use a full https:// URL") String mapLinkUrl,
+
+        @Min(value = 1, message = "Discount must be at least 1%")
+        @Max(value = 100, message = "Discount cannot exceed 100%")
+        Integer firstVisitDiscountPercent,
+
+        /** null keeps the current value (older clients that don't send it). */
+        Boolean firstVisitOfferEnabled
 ) {
 }

@@ -14,6 +14,12 @@ import java.util.stream.Collectors;
 @Component
 public class ServiceMapper {
 
+    private final ServiceOfferMapper offerMapper;
+
+    public ServiceMapper(ServiceOfferMapper offerMapper) {
+        this.offerMapper = offerMapper;
+    }
+
     private static final String DETAILS_SEPARATOR = "|";
 
     /** @param publicView when true only active doctors are listed */
@@ -31,6 +37,7 @@ public class ServiceMapper {
                 s.getIcon(),
                 s.getImageUrl(),
                 s.getConsultationFee(),
+                offerMapper.toOffer(s, publicView),
                 s.getEstimatedDuration(),
                 s.getDisplayOrder(),
                 s.isActive(),
@@ -54,6 +61,9 @@ public class ServiceMapper {
         target.setIcon(ValidationPatterns.trimToNull(req.icon()));
         target.setImageUrl(ValidationPatterns.trimToNull(req.imageUrl()));
         target.setConsultationFee(req.consultationFee());
+        target.setOfferDiscountPercent(req.offerDiscountPercent());
+        target.setOfferStartDate(req.offerDiscountPercent() == null ? null : req.offerStartDate());
+        target.setOfferEndDate(req.offerDiscountPercent() == null ? null : req.offerEndDate());
         target.setEstimatedDuration(req.estimatedDuration());
         target.setDisplayOrder(req.displayOrder() == null ? 0 : req.displayOrder());
         if (req.active() != null) {

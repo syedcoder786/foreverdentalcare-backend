@@ -3,6 +3,7 @@ package com.clinic.dto;
 import com.clinic.enums.AppointmentStatus;
 import jakarta.validation.constraints.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -90,7 +91,13 @@ public final class PatientDtos {
             LocalTime appointmentTime,
             LocalTime endTime,
             String message,
-            Instant createdAt
+            Instant createdAt,
+            BigDecimal consultationFee,
+            /** Set when this appointment carries the online first-visit discount. */
+            Integer firstVisitDiscountPercent,
+            BigDecimal treatmentFee,
+            Integer treatmentDiscountPercent,
+            BigDecimal finalFee
     ) {
     }
 }

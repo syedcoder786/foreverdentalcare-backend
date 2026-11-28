@@ -95,7 +95,8 @@ public final class DoctorDtos {
     }
 
     public record ServiceRef(Long id, String name, String slug, Long specialtyId, String specialtyName,
-                             Integer estimatedDuration, BigDecimal consultationFee, boolean active) {
+                             Integer estimatedDuration, BigDecimal consultationFee, boolean active,
+                             com.clinic.dto.response.ServiceOffer offer) {
     }
 
     public record ScheduleResponse(Long doctorId, List<DaySchedule> weekly, List<SpecialHoursDto> specialHours,

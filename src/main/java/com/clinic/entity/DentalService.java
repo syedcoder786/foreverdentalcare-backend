@@ -56,6 +56,18 @@ public class DentalService {
     @Column(name = "consultation_fee", precision = 10, scale = 2)
     private BigDecimal consultationFee;
 
+    /** Time-limited percentage off the fee above; all three offer fields are set together or not at all. */
+    @Column(name = "offer_discount_percent")
+    private Integer offerDiscountPercent;
+
+    /** First day of the offer (clinic-local, inclusive). */
+    @Column(name = "offer_start_date")
+    private java.time.LocalDate offerStartDate;
+
+    /** Last day of the offer (clinic-local, inclusive). */
+    @Column(name = "offer_end_date")
+    private java.time.LocalDate offerEndDate;
+
     @Column(name = "estimated_duration_minutes", nullable = false)
     private Integer estimatedDuration;
 
@@ -83,5 +95,17 @@ public class DentalService {
     @PreUpdate
     void onUpdate() {
         updatedAt = Instant.now();
+    }
+
+    public boolean hasOffer() {
+        return offerDiscountPercent != null && offerStartDate != null && offerEndDate != null;
+    }
+
+    /** Percent off for an appointment on {@code date}, or null when no offer covers that date or there is no fee. */
+    public Integer offerPercentFor(java.time.LocalDate date) {
+        if (!hasOffer() || consultationFee == null || consultationFee.signum() <= 0) {
+            return null;
+        }
+        return date.isBefore(offerStartDate) || date.isAfter(offerEndDate) ? null : offerDiscountPercent;
     }
 }

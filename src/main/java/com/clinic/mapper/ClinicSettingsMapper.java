@@ -43,7 +43,9 @@ public class ClinicSettingsMapper {
                 s.getInstagramUrl(),
                 s.getYoutubeUrl(),
                 s.getGoogleReviewsUrl(),
-                s.getMapLinkUrl());
+                s.getMapLinkUrl(),
+                s.getFirstVisitDiscountPercent(),
+                s.isFirstVisitOfferEnabled());
     }
 
     public void apply(ClinicSettingsRequest r, ClinicSettings target) {
@@ -71,5 +73,9 @@ public class ClinicSettingsMapper {
         target.setYoutubeUrl(ValidationPatterns.trimToNull(r.youtubeUrl()));
         target.setGoogleReviewsUrl(ValidationPatterns.trimToNull(r.googleReviewsUrl()));
         target.setMapLinkUrl(ValidationPatterns.trimToNull(r.mapLinkUrl()));
+        target.setFirstVisitDiscountPercent(r.firstVisitDiscountPercent());
+        if (r.firstVisitOfferEnabled() != null) {
+            target.setFirstVisitOfferEnabled(r.firstVisitOfferEnabled());
+        }
     }
 }
