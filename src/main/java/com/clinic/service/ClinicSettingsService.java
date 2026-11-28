@@ -53,13 +53,13 @@ public class ClinicSettingsService {
         LocalTime bs = r.breakStartTime();
         LocalTime be = r.breakEndTime();
         if ((bs == null) != (be == null)) {
-            throw new BusinessException("breakEndTime", "Provide both break start and break end, or neither");
+            throw new BusinessException("breakEndTime", "Enter both break start and break end, or remove the break");
         }
         if (bs != null) {
             if (!be.isAfter(bs)) {
-                throw new BusinessException("breakEndTime", "Break end must be after break start");
+                throw new BusinessException("breakEndTime", "Break must end after it starts");
             }
-            if (bs.isBefore(r.openingTime()) || be.isAfter(r.closingTime())) {
+            if (!bs.isAfter(r.openingTime()) || !be.isBefore(r.closingTime())) {
                 throw new BusinessException("breakStartTime", "Break must be within opening hours");
             }
         }

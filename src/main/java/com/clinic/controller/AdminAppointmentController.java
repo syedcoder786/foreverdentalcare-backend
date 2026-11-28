@@ -36,7 +36,7 @@ public class AdminAppointmentController {
             "status", "status",
             "doctorName", "doctor.fullName",
             "patientName", "patient.fullName");
-    private static final String DEFAULT_SORT = "appointmentDate";
+    private static final String DEFAULT_SORT = "createdAt";
 
     private final AppointmentService appointmentService;
 
@@ -56,7 +56,7 @@ public class AdminAppointmentController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @RequestParam(defaultValue = "appointmentDate") String sortBy,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
         String field = SORT_FIELDS.getOrDefault(sortBy, DEFAULT_SORT);
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;

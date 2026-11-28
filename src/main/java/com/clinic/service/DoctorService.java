@@ -274,11 +274,11 @@ public class DoctorService {
             throw new BusinessException(field, "End time must be after start time (" + field + ")");
         }
         if ((bs == null) != (be == null)) {
-            throw new BusinessException(field, "Provide both break start and break end, or neither (" + field + ")");
+            throw new BusinessException(field, "Enter both the morning shift end and the evening shift start, or turn off the evening shift (" + field + ")");
         }
         if (bs != null) {
-            if (!be.isAfter(bs) || bs.isBefore(start) || be.isAfter(end)) {
-                throw new BusinessException(field, "Break must be inside working hours (" + field + ")");
+            if (!be.isAfter(bs) || !bs.isAfter(start) || !be.isBefore(end)) {
+                throw new BusinessException(field, "Shift times are out of order: the morning shift must end before the evening shift starts (" + field + ")");
             }
         }
         if (start.plusMinutes(slot).isAfter(end) || start.plusMinutes(slot).isBefore(start)) {
@@ -361,24 +361,28 @@ public class DoctorService {
     }
 
     /** Upcoming appointments of this doctor that no longer fall inside the doctor's hours (for an admin warning). */
+    /**
+     * Upcoming pending/confirmed appointments that no longer fit the doctor's hours (outside the shifts, or in the gap
+     * between the morning and evening shift). One query for all of them; the hours are resolved in memory.
+     */
     private int countUpcomingOutsideAvailability(Doctor d) {
         LocalDate today = scheduleEngine.today();
-        int horizon = settingsService.getSettings().getBookingWindowDays();
         int count = 0;
-        for (LocalDate date = today; !date.isAfter(today.plusDays(horizon)); date = date.plusDays(1)) {
-            Optional<WorkingHours> hours = scheduleEngine.hoursFor(d, date);
-            for (Appointment a : appointmentRepository.findActiveForDoctorOnDate(d.getId(), date)) {
-                if (a.getStatus() == com.clinic.enums.AppointmentStatus.COMPLETED) {
-                    continue;
-                }
-                boolean inside = hours.isPresent()
-                        && !a.getAppointmentTime().isBefore(hours.get().getStartTime())
-                        && !a.getEndTime().isAfter(hours.get().getEndTime());
-                if (!inside) {
-                    count++;
-                }
+        for (Appointment a : appointmentRepository.findUpcomingForDoctor(d.getId(), today)) {
+            Optional<WorkingHours> hours = scheduleEngine.hoursFor(d, a.getAppointmentDate());
+            if (hours.isEmpty() || !fitsHours(hours.get(), a.getAppointmentTime(), a.getEndTime())) {
+                count++;
             }
         }
         return count;
     }
+
+    private static boolean fitsHours(WorkingHours h, LocalTime start, LocalTime end) {
+        if (start.isBefore(h.getStartTime()) || end.isAfter(h.getEndTime())) {
+            return false;
+        }
+        boolean hasBreak = h.getBreakStartTime() != null && h.getBreakEndTime() != null;
+        return !hasBreak || !start.isBefore(h.getBreakEndTime()) || !end.isAfter(h.getBreakStartTime());
+    }
+
 }

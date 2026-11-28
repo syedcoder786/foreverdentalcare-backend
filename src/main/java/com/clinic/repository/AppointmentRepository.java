@@ -46,6 +46,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
             """)
     List<Appointment> findActiveForDoctorOnDate(@Param("doctorId") Long doctorId, @Param("date") LocalDate date);
 
+    /** Pending/confirmed appointments of one doctor from a date onwards, in one query (schedule-change checks). */
+    @Query("""
+            select a from Appointment a
+            where a.doctor.id = :doctorId and a.appointmentDate >= :from
+              and a.status in (com.clinic.enums.AppointmentStatus.PENDING, com.clinic.enums.AppointmentStatus.CONFIRMED)
+            order by a.appointmentDate, a.appointmentTime
+            """)
+    List<Appointment> findUpcomingForDoctor(@Param("doctorId") Long doctorId, @Param("from") LocalDate from);
+
     long countByStatus(AppointmentStatus status);
 
     long countByAppointmentDateAndStatusNot(LocalDate date, AppointmentStatus status);
